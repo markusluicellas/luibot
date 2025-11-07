@@ -6,6 +6,10 @@ import multer from "multer";
 import pdf from "pdf-parse";
 import fs from "fs";
 
+// ganz oben, bevor irgendwas Schweres initialisiert wird
+app.get('/health', (req, res) => {
+  res.status(200).type('text').send('OK');
+});
 
 const app = express();
 app.use(express.json({ limit: "5mb" }));
@@ -216,5 +220,6 @@ app.post("/zapier", async (req, res) => {
     console.error("Zapier push failed", err);
     res.status(500).json({ error: err.message });
   }
+  
 });
 
