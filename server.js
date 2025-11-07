@@ -187,3 +187,24 @@ app.post("/ask", async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`LuiBot up on :${PORT}`));
+app.post("/zapier", async (req, res) => {
+  try {
+    const { question } = req.body;
+    const answer = await ask(question); // oder deine /ask-Logik direkt
+    // an Zapier weitergeben:
+    await fetch("https://hooks.zapier.com/hooks/catch/8680977/use83xi/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question,
+        answer,
+        timestamp: new Date().toISOString()
+      })
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Zapier push failed", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
