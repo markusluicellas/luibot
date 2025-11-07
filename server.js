@@ -15,7 +15,11 @@ const OPENAI_EMBED = process.env.OPENAI_EMBED_MODEL || "text-embedding-3-large";
 const CONNECTEAM_API_KEY = process.env.CONNECTEAM_API_KEY;
 const CONNECTEAM_CONV = process.env.CONNECTEAM_DEFAULT_CONVERSATION_ID;
 
-const pool = new Pool({ connectionString: DATABASE_URL });
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
 
 // --- Helpers ---
 async function embed(text) {
