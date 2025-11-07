@@ -2,9 +2,16 @@ import express from "express";
 import fetch from "node-fetch";
 import pkg from "pg";
 const { Pool } = pkg;
+import multer from "multer";
+import pdf from "pdf-parse";
+import fs from "fs";
+
 
 const app = express();
 app.use(express.json({ limit: "5mb" }));
+// Upload nach /tmp (ephemerer Speicher bei Render)
+const upload = multer({ dest: "/tmp", limits: { fileSize: 20 * 1024 * 1024 } }); // 20 MB
+
 
 // --- ENV ---
 const PORT = process.env.PORT || 3000;
@@ -77,6 +84,52 @@ app.post("/ingest/text", async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "ingest failed", details: e.message });
+  }
+});
+// --- NEU: PDF hochladen und einlernen ---
+app.post("/ingest/pdf", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded (field name 'file')" });
+    const { title } = req.body || {};
+
+    // PDF -> Text extrahieren
+    const dataBuffer = fs.readFileSync(req.file.path);
+    const data = await pdf(dataBuffer);         // nutzt pdf-parse
+    fs.unlinkSync(req.file.path);               // Temp-Datei sofort löschen
+
+    const text = (data.text || "").replace(/\s+/g, " ").trim();
+    if (!text || text.length < 50) {
+      return res.status(400).json({ error: "Not enough text in PDF" });
+    }
+
+    // Dokument + Chunks speichern (wie bei /ingest/text)
+    const client = await pool.connect();
+    try {
+      const doc = await client.query(
+        `INSERT INTO documents (title, source, source_type) VALUES ($1,$2,$3) RETURNING id`,
+        [title || req.file.originalname, req.file.originalname, "pdf"]
+      );
+      const docId = doc.rows[0].id;
+
+      const parts = chunkText(text);
+      let idx = 0;
+      for (const c of parts) {
+        const v = await embed(c);
+        const vec = "[" + v.join(",") + "]";
+        await client.query(
+          `INSERT INTO chunks (document_id, chunk_index, content, embedding, meta)
+           VALUES ($1,$2,$3,$4::vector,$5)`,
+          [docId, idx++, c, vec, JSON.stringify({ source: "pdf", file: req.file.originalname })]
+        );
+      }
+
+      res.json({ ok: true, chunks: parts.length });
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    console.error("PDF ingest failed:", e);
+    res.status(500).json({ error: "PDF ingest failed", details: e.message });
   }
 });
 
