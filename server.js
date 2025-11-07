@@ -169,6 +169,16 @@ app.post("/ask", async (req, res) => {
     }).then(r => r.json());
 
     const answer = r.choices?.[0]?.message?.content?.trim() || "Dazu habe ich gerade keine sichere Info.";
+if (process.env.ZAPIER_OUT_URL) {
+  await fetch(process.env.ZAPIER_OUT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      conversationId: process.env.CONNECTEAM_DEFAULT_CONVERSATION_ID,
+      answer
+    })
+  });
+}
 
     // Optional: direkt in Connecteam posten
     if (postToConnecteam && CONNECTEAM_API_KEY && CONNECTEAM_CONV) {
