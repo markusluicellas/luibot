@@ -1,0 +1,8 @@
+# Health
+curl -s https://<DEINE-URL>/health
+
+# Ingest Beispiel-Text
+curl -s -X POST https://<DEINE-URL>/ingest/text     -H "Content-Type: application/json"     -d '{"title":"Kasse – Tagesabschluss","content":"Tagesabschluss: 1) Menü > Abschluss 2) Bargeld zählen 3) Pfand separat 4) Bericht senden."}'
+
+# Ask
+curl -s -X POST https://<DEINE-URL>/ask     -H "Content-Type: "application/json"     -d '{"question":"Wie mache ich den Tagesabschluss an der Kasse?"}'
